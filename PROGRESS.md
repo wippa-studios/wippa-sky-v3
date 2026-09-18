@@ -256,6 +256,24 @@
   regression — `elevatorCars: [null]` + `highestFloor: 50` + poisoned cellTower grid entry →
   loadGame false, all 11 sampled state fields byte-identical to pre-load. `node --check` clean
   on all js files. Artifacts updated in `.tmp/agent/perspective-review/{REVIEW,CHANGES,TEST}.md`.
+- [2026-09-18] Pushed to GitHub: new repo `wippa-studios/wippa-sky-v3` (main, commit b6a60c1,
+  44 files). Repo-local git identity set (`wippa studios` / noreply email); token used
+  transiently and stripped from the remote URL; user later flipped repo to public.
+- [2026-09-18] **Full-repo audit fallout (5 fixes + 2 regressions, 53/53 PASS):**
+  - 🔴 CRITICAL: sims.js called `cellToScreenLocal` (grid.js export) without importing it —
+    drawSims threw a ReferenceError for any tenant, killing the whole gameLoop (its
+    requestAnimationFrame re-arm is at the end of the same function). Reproduced on the first
+    normal floor built. FIXED: added to the grid.js import; regression test spawns real sims
+    and draws twice.
+  - 🟠 LANDMINE: facade.js drawInterior's default case referenced `col()` — a buildCell-local
+    closure. KIND.elevator → 'shaft' hits default, so any direct sprite()/blitCell('elevator')
+    would crash. FIXED: dedicated 'shaft' case + default hardened to module-scope `P.interior`.
+  - 🟡 economy.js: removed dead grid-scan fallback in calculatePopulation (tenants is always
+    an array).
+  - 🟡 elevators.js: removed two unused `const now = performance.now();`.
+  - 🟡 constants/needs: renamed MOOD_ANNYED → MOOD_ANNOYED (typo, consistent usage).
+  - Test coverage gap closed: render-smoke's pipeline test used to set `s.tenants = []`,
+    disarming the exact loop that crashed; it now spawns real sims and asserts >0.
 
 ## ⏭️ Next
 - Optional manual smoke test in a browser (scroll / tall tower / basement / hover) to confirm

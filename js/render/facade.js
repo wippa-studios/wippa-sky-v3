@@ -216,8 +216,16 @@ function drawInterior(g, type, kind, w, h, s, slabH, night, accent, rng) {
       if (type === 'subway') drawSubway(g, w, h, s, y0, gh, night, accent, rng);
       else drawBasementLobby(g, w, h, s, y0, gh, night, accent, rng);
       break;
+    case 'shaft':
+      // Elevator shafts behind the doors: dark, unlit well.
+      g.fillStyle = P.interior[night];
+      g.fillRect(0, y0, w, gh);
+      break;
     default:
-      g.fillStyle = col('interior');
+      // Keep the fallback safe: P is module-scope, so this can never throw
+      // even for a kind we don't know about (col() was a buildCell-local
+      // closure and did not exist in this function's scope).
+      g.fillStyle = P.interior[night];
       g.fillRect(0, y0, w, gh);
   }
 }

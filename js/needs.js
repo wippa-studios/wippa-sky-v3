@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import {
-  MOOD_CONTENT, MOOD_ANNYED, MOOD_ANGRY, MOOD_FURIOUS,
+  MOOD_CONTENT, MOOD_ANNOYED, MOOD_ANGRY, MOOD_FURIOUS,
   ELEVATOR_WAIT_STRESS_START, ELEVATOR_WAIT_STRESS_RATE,
   FURIOUS_DAYS_BEFORE_MOVEOUT, RELET_MIN_RATING, RELET_DAYS,
   FLOOR_TYPES,
@@ -118,14 +118,14 @@ export function getAmenityScore(state, row, col) {
 
 export function getMoodBand(mood) {
   if (mood >= MOOD_CONTENT) return 'content';
-  if (mood >= MOOD_ANNYED) return 'annoyed';
+  if (mood >= MOOD_ANNOYED) return 'annoyed';
   if (mood >= MOOD_ANGRY) return 'angry';
   return 'furious';
 }
 
 export function getMoodColor(mood) {
   if (mood >= MOOD_CONTENT) return '#4ade80';
-  if (mood >= MOOD_ANNYED) return '#fbbf24';
+  if (mood >= MOOD_ANNOYED) return '#fbbf24';
   if (mood >= MOOD_ANGRY) return '#f87171';
   return '#ef4444';
 }
@@ -137,7 +137,7 @@ export function getMoodLabel(mood) {
 
 export function getIncomeMult(mood) {
   if (mood >= MOOD_CONTENT) return 1.15;
-  if (mood >= MOOD_ANNYED) return 0.95;
+  if (mood >= MOOD_ANNOYED) return 0.95;
   if (mood >= MOOD_ANGRY) return 0.7;
   return 0.4;
 }

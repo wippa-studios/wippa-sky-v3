@@ -440,7 +440,6 @@ export function drawElevatorShafts(ctx, state) {
 
   // ── pass 2: draw call lamps on shaft walls at floors with pending calls ──
   if (state._callButtons) {
-    const now = performance.now();
     for (const [key, call] of state._callButtons) {
       if (call.served) continue;
 
@@ -581,7 +580,6 @@ export function updateElevatorVisuals(state, dt) {
   }
 
   // ── update call button pulse timers ──
-  const now = performance.now();
   for (const [key, call] of (state._callButtons || new Map())) {
     if (call.served) {
       _callPulse.delete(key);

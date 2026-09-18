@@ -73,17 +73,9 @@ export function calculateExpenses(state) {
 
 export function calculatePopulation(state) {
   // Population is the number of live tenants (residents, workers, guests, visitors).
-  if (state.tenants) return state.tenants.length;
-  let pop = 0;
-  for (const [, cells] of state.grid) {
-    for (let c = 0; c < state.cols; c++) {
-      const cell = cells[c];
-      if (cell && FLOOR_TYPES[cell.type] && FLOOR_TYPES[cell.type].popAdd > 0 && !cell.vacant) {
-        pop += FLOOR_TYPES[cell.type].popAdd;
-      }
-    }
-  }
-  return pop;
+  // state.tenants is always an array (createState inits []), so live count wins;
+  // a grid-capacity fallback was dead code here and has been removed.
+  return state.tenants.length;
 }
 
 export function calculateSatisfaction(state) {

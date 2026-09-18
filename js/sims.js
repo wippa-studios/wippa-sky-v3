@@ -8,7 +8,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { FLOOR_TYPES, mulberry32, CELL_W } from './constants.js';
-import { cellToScreenPerspective } from './grid.js';
+import { cellToScreenPerspective, cellToScreenLocal } from './grid.js';
 import { getCell } from './state.js';
 import { planItinerary } from './pathfind.js';
 import { registerWaiting, unregisterWaiting, callShaft, hasPendingCall } from './dispatch.js';
