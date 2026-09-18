@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wippa Sky — Tower Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#050914;color:#e7edf7;font-family:'DM Sans',system-ui,sans-serif;overflow:hidden;height:100vh;width:100vw;user-select:none}
+  #game-container{position:relative;width:100vw;height:100vh}
+  #game-canvas{display:block;width:100%;height:100%;cursor:default}
+  .glass{background:linear-gradient(135deg,rgba(13,24,43,.78),rgba(7,13,27,.64));backdrop-filter:blur(24px) saturate(140%);-webkit-backdrop-filter:blur(24px) saturate(140%);border:1px solid rgba(174,218,255,.14);border-radius:18px;box-shadow:0 18px 60px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.09),0 0 0 1px rgba(0,0,0,.12)}
+  #top-hud{position:absolute;top:18px;left:50%;transform:translateX(-50%);display:flex;gap:9px;align-items:center;padding:9px 12px;z-index:100}
+  .stat{display:flex;align-items:center;gap:8px;padding:5px 13px;border-radius:11px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.075)}
+  .stat-icon{font-size:15px;filter:saturate(.85)}
+  .stat-label{font-size:9px;text-transform:uppercase;letter-spacing:1.4px;color:rgba(213,230,247,.48);font-weight:700}
+  .stat-value{font-size:14px;font-weight:700;font-family:'Space Grotesk','JetBrains Mono',monospace}
+  .stat-money .stat-value{color:#4ade80}
+  .stat-net .stat-value{color:#4ade80}
+  .stat-pop .stat-value{color:#60a5fa}
+  .stat-floors .stat-value{color:#c084fc}
+  .stat-rating .stat-value{color:#fbbf24}
+  .stat-happiness .stat-value{color:#4ade80}
+  #toolbar{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:6px;padding:9px 11px;z-index:100;align-items:stretch}
+  .tool-group{display:flex;gap:4px;padding:0 8px;border-right:1px solid rgba(255,255,255,0.06)}
+  .tool-group:last-child{border-right:none;padding-right:0}
+  .tool-group:first-child{padding-left:0}
+  .tool-btn{width:52px;height:52px;border:none;border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.075);color:#aab8cc;font-size:10px;transition:all .18s cubic-bezier(.2,.8,.2,1);position:relative}
+  .tool-btn:hover{background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.15);transform:translateY(-2px)}
+  .tool-btn.active{background:linear-gradient(145deg,rgba(61,212,220,.2),rgba(96,91,255,.22));color:#d8fbff;border-color:rgba(102,224,234,.62);box-shadow:0 0 24px rgba(60,207,224,.2),inset 0 1px 0 rgba(255,255,255,.14)}
+  .tool-btn .icon{font-size:20px;line-height:1}
+  .tool-btn .label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+  .tool-btn .cost{font-size:8px;color:rgba(255,255,255,0.3);font-family:'JetBrains Mono',monospace}
+  .tool-btn.active .cost{color:rgba(255,255,255,0.5)}
+  .tool-btn:active{transform:translateY(0) scale(.95)}
+  .speed-btn:active,#sound-toggle:active,#settings-btn:active{transform:scale(.92)}
+  .settings-btn:active{transform:translateY(1px)}
+  #info-panel{position:absolute;top:80px;right:16px;width:260px;padding:16px;z-index:100;display:none}
+  #info-panel.visible{display:block}
+  #info-panel h3{font-size:14px;font-weight:700;margin-bottom:10px;color:#e0e0ff}
+  .info-row{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04)}
+  .info-row .label{color:rgba(255,255,255,0.4)}
+  .info-row .value{font-weight:600;font-family:'JetBrains Mono',monospace}
+  .info-close{position:absolute;top:10px;right:12px;background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;font-size:18px}
+  #minimap-container{position:absolute;top:80px;left:16px;z-index:100;padding:8px}
+  #minimap-canvas{border-radius:8px;cursor:pointer}
+  #speed-controls{position:absolute;bottom:20px;right:16px;display:flex;gap:4px;padding:6px 8px;z-index:100}
+  .speed-btn{width:36px;height:36px;border:none;border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:#a0a0c0;font-size:12px;font-weight:700;transition:all 0.15s;display:flex;align-items:center;justify-content:center}
+  .speed-btn:hover{background:rgba(255,255,255,0.1)}
+  .speed-btn.active{background:rgba(74,222,128,0.15);color:#4ade80;border-color:rgba(74,222,128,0.3)}
+  #event-log{position:absolute;bottom:90px;left:16px;width:320px;z-index:100;padding:10px 14px;max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+  #event-log::-webkit-scrollbar{width:4px}
+  #event-log::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
+  .log-entry{font-size:11px;color:rgba(255,255,255,0.5);padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.03);animation:fadeIn 0.3s}
+  .log-entry .time{color:rgba(255,255,255,0.25);font-family:'JetBrains Mono',monospace;font-size:10px;margin-right:6px}
+  .log-entry.income{color:#4ade80}
+  .log-entry.expense{color:#f87171}
+  .log-entry.info{color:#60a5fa}
+  .log-entry.warning{color:#fbbf24}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+  #date-display{position:absolute;top:20px;right:16px;padding:9px 17px;z-index:100}
+  #date-display .day{font-size:18px;font-weight:800;color:#e0e0ff}
+  #date-display .period{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.3);font-weight:600}
+  #achievement-popup{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:600;pointer-events:none;opacity:0;transition:opacity 0.4s,text-shadow 0.4s}
+  #achievement-popup.show{opacity:1}
+  #achievement-popup .ach-inner{background:rgba(15,15,40,0.85);backdrop-filter:blur(30px);border:1px solid rgba(251,191,36,0.3);border-radius:20px;padding:30px 50px;text-align:center;box-shadow:0 0 60px rgba(251,191,36,0.15)}
+  #achievement-popup .ach-icon{font-size:40px;margin-bottom:8px}
+  #achievement-popup .ach-title{font-size:11px;text-transform:uppercase;letter-spacing:3px;color:#fbbf24;font-weight:700;margin-bottom:4px}
+  #achievement-popup .ach-name{font-size:22px;font-weight:900;color:#fff}
+  .toast{position:absolute;top:80px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:12px;z-index:200;font-size:13px;font-weight:500;animation:toastIn 0.3s,toastOut 0.3s 2.7s forwards;pointer-events:none}
+  .toast.success{background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);color:#4ade80}
+  .toast.error{background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:#f87171}
+  .toast.info{background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:#60a5fa}
+  @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+  @keyframes toastOut{from{opacity:1}to{opacity:0}}
+  #sound-toggle{position:absolute;bottom:20px;left:16px;width:38px;height:38px;border:none;border-radius:11px;cursor:pointer;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);color:#a0b5cc;font-size:16px;z-index:100;display:flex;align-items:center;justify-content:center;transition:all .15s}
+  #sound-toggle:hover{background:rgba(255,255,255,0.1)}
+  #settings-btn{position:absolute;bottom:20px;left:60px;width:38px;height:38px;border:none;border-radius:11px;cursor:pointer;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);color:#a0b5cc;font-size:16px;z-index:100;display:flex;align-items:center;justify-content:center;transition:all .15s}
+  #settings-btn:hover{background:rgba(255,255,255,0.1)}
+  #settings-panel{position:absolute;bottom:70px;left:16px;width:280px;padding:16px;z-index:150;display:none}
+  #settings-panel.visible{display:block}
+  #settings-panel h3{font-size:14px;font-weight:700;margin-bottom:12px;color:#e0e0ff}
+  .settings-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04)}
+  .settings-row label{color:rgba(255,255,255,0.5)}
+  .settings-row input[type="checkbox"]{accent-color:#4ade80}
+  .settings-btn{display:block;width:100%;padding:8px;margin-top:8px;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:all 0.15s}
+  .settings-btn.primary{background:rgba(74,222,128,0.15);color:#4ade80;border:1px solid rgba(74,222,128,0.3)}
+  .settings-btn.primary:hover{background:rgba(74,222,128,0.25)}
+  .settings-btn.danger{background:rgba(248,113,113,0.15);color:#f87171;border:1px solid rgba(248,113,113,0.3)}
+  .settings-btn.danger:hover{background:rgba(248,113,113,0.25)}
+  .settings-btn.secondary{background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid rgba(96,165,250,0.3)}
+  .settings-btn.secondary:hover{background:rgba(96,165,250,0.25)}
+  #weekly-report{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:500;display:none;width:360px;padding:24px;max-height:80vh;overflow-y:auto}
+  #weekly-report.visible{display:block}
+  #weekly-report h3{font-size:16px;font-weight:700;margin-bottom:14px;color:#e0e0ff;text-align:center}
+  .report-stat{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.04)}
+  .report-stat span:first-child{color:rgba(255,255,255,0.5)}
+  .report-stat span:last-child{font-weight:600;font-family:'JetBrains Mono',monospace}
+  .report-section{padding:10px 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.3);font-weight:700}
+  .report-complaint{font-size:11px}
+  #weekly-close{position:absolute;top:12px;right:16px;background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;font-size:20px}
+  .mood-overlay-label{position:absolute;top:80px;left:50%;transform:translateX(-50%);padding:4px 12px;border-radius:8px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;z-index:90;display:none;background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);color:#4ade80}
+  .mood-overlay-label.visible{display:block}
+  @media(max-width:900px){#top-hud{gap:3px;padding:7px 6px;max-width:calc(100vw - 24px)}.stat{padding:4px 7px;gap:4px}.stat-label{display:none}.stat-value{font-size:11px}#toolbar{bottom:10px;max-width:calc(100vw - 20px);overflow-x:auto;justify-content:flex-start}.tool-group{padding:0 4px}.tool-btn{width:45px;height:48px}.tool-btn .icon{font-size:17px}#event-log{display:none}#minimap-container{top:78px;left:10px;transform:scale(.75);transform-origin:top left}#date-display{top:16px;right:10px}.glass{border-radius:14px}#settings-panel{left:10px;width:250px}}
+</style>
+</head>
+<body>
+<div id="game-container">
+  <canvas id="game-canvas"></canvas>
+  <div id="top-hud" class="glass">
+    <div class="stat stat-money"><span class="stat-icon">💰</span><div><div class="stat-label">Funds</div><div class="stat-value" id="hud-money">$500,000</div></div></div>
+    <div class="stat stat-net"><span class="stat-icon">📈</span><div><div class="stat-label">Net / day</div><div class="stat-value" id="hud-net">$0</div></div></div>
+    <div class="stat stat-pop"><span class="stat-icon">👥</span><div><div class="stat-label">Population</div><div class="stat-value" id="hud-pop">0</div></div></div>
+    <div class="stat stat-floors"><span class="stat-icon">🏢</span><div><div class="stat-label">Floors</div><div class="stat-value" id="hud-floors">0</div></div></div>
+    <div class="stat stat-happiness"><span class="stat-icon">😊</span><div><div class="stat-label">Happiness</div><div class="stat-value" id="hud-happiness">70%</div></div></div>
+    <div class="stat stat-rating"><span class="stat-icon">⭐</span><div><div class="stat-label">Rating</div><div class="stat-value" id="hud-rating">★</div></div></div>
+  </div>
+  <div id="date-display" class="glass">
+    <div class="day" id="date-day">Day 1</div>
+    <div class="period" id="date-period">Morning</div>
+  </div>
+  <div id="toolbar" class="glass">
+    <div class="tool-group">
+      <button class="tool-btn" data-tool="office" title="Office (1)"><span class="icon">🏢</span><span class="label">Office</span><span class="cost">$10k</span></button>
+      <button class="tool-btn" data-tool="residence" title="Residence (2)"><span class="icon">🏠</span><span class="label">Living</span><span class="cost">$15k</span></button>
+      <button class="tool-btn" data-tool="hotel" title="Hotel (3)"><span class="icon">🏬</span><span class="label">Hotel</span><span class="cost">$20k</span></button>
+      <button class="tool-btn" data-tool="shop" title="Shop (4)"><span class="icon">🛒</span><span class="label">Shop</span><span class="cost">$8k</span></button>
+      <button class="tool-btn" data-tool="restaurant" title="Restaurant (5)"><span class="icon">🍴</span><span class="label">Dining</span><span class="cost">$12k</span></button>
+    </div>
+    <div class="tool-group">
+      <button class="tool-btn" data-tool="cinema" title="Cinema (6)"><span class="icon">🎬</span><span class="label">Cinema</span><span class="cost">$25k</span></button>
+      <button class="tool-btn" data-tool="park" title="Sky Park (7)"><span class="icon">🌳</span><span class="label">Park</span><span class="cost">$18k</span></button>
+      <button class="tool-btn" data-tool="spa" title="Spa (8)"><span class="icon">💆</span><span class="label">Spa</span><span class="cost">$22k</span></button>
+    </div>
+    <div class="tool-group">
+      <button class="tool-btn" data-tool="skyLobby" title="Sky Lobby"><span class="icon">☁️</span><span class="label">Sky Lby</span><span class="cost">$45k</span></button>
+      <button class="tool-btn" data-tool="parking" title="Parking"><span class="icon">🅿️</span><span class="label">Parking</span><span class="cost">$9k</span></button>
+      <button class="tool-btn" data-tool="service" title="Service"><span class="icon">⚙️</span><span class="label">Service</span><span class="cost">$14k</span></button>
+      <button class="tool-btn" data-tool="basementLobby" title="Basement Lobby"><span class="icon">🚪</span><span class="label">B.Lobby</span><span class="cost">$6k</span></button>
+      <button class="tool-btn" data-tool="subway" title="Subway"><span class="icon">🚇</span><span class="label">Subway</span><span class="cost">$80k</span></button>
+    </div>
+    <div class="tool-group">
+      <button class="tool-btn" data-tool="elevator" title="Elevator shaft — click a built shaft cell to add a car ($15k) (E)"><span class="icon">🔼</span><span class="label">Elevator</span><span class="cost">$5k</span></button>
+      <button class="tool-btn" data-tool="demolish" title="Demolish (D)"><span class="icon">💥</span><span class="label">Demo</span><span class="cost"></span></button>
+    </div>
+    <div class="tool-group">
+      <button class="tool-btn" data-tool="cellTower" id="cell-tower-btn" title="Cell tower — install on the roof of a 41+ floor tower ($25k)"><span class="icon">📡</span><span class="label">CELL TWR</span><span class="cost">$25k</span></button>
+      <button class="tool-btn" data-tool="select" title="Select / Info (S)"><span class="icon">👆</span><span class="label">Select</span><span class="cost"></span></button>
+    </div>
+  </div>
+  <div id="minimap-container" class="glass">
+    <canvas id="minimap-canvas" width="120" height="300"></canvas>
+  </div>
+  <div id="speed-controls" class="glass">
+    <button class="speed-btn" data-speed="0">⏸</button>
+    <button class="speed-btn active" data-speed="1">▶</button>
+    <button class="speed-btn" data-speed="2">▶▶</button>
+    <button class="speed-btn" data-speed="3">▶▶▶</button>
+  </div>
+  <div id="event-log" class="glass"></div>
+  <button id="sound-toggle" title="Toggle Sound">🔇</button>
+  <button id="settings-btn" title="Settings">⚙️</button>
+  <div class="mood-overlay-label" id="mood-overlay-label">😊 Mood Overlay ON</div>
+  <div id="achievement-popup"><div class="ach-inner"><div class="ach-icon" id="ach-icon">🏆</div><div class="ach-title">Achievement</div><div class="ach-name" id="ach-name"></div></div></div>
+  <div id="info-panel" class="glass">
+    <button class="info-close" onclick="document.getElementById('info-panel').classList.remove('visible')">×</button>
+    <h3 id="info-title">Floor Info</h3>
+    <div id="info-content"></div>
+  </div>
+  <div id="settings-panel" class="glass">
+    <button class="info-close" id="settings-close">×</button>
+    <h3>Settings</h3>
+    <div class="settings-row"><label>Reduced Motion</label><input type="checkbox" id="reduced-motion"></div>
+    <div class="settings-row"><label>Show Mood Overlay (H)</label><input type="checkbox" id="mood-overlay-toggle"></div>
+    <button class="settings-btn primary" id="save-btn">💾 Save Game</button>
+    <button class="settings-btn secondary" id="load-btn">📂 Load Game</button>
+    <button class="settings-btn danger" id="new-btn">🆕 New Tower</button>
+  </div>
+  <div id="weekly-report" class="glass">
+    <button class="info-close" id="weekly-close">×</button>
+    <h3>📊 Weekly Report</h3>
+    <div id="weekly-content"></div>
+  </div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

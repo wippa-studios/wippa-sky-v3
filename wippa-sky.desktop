@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Wippa Sky
+Comment=Modern Tower Builder - A SimTower reimagining
+Exec=/home/Joel/Desktop/wippa-sky-main/launch.sh
+Icon=preferences-desktop-theme
+Terminal=false
+Type=Application
+Categories=Game;Simulation;
+Keywords=tower;builder;simulation;game;
