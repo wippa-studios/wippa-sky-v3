@@ -79,7 +79,7 @@ export function loadGame(state) {
     // Deserialize EVERYTHING into locals first. Nothing touches live state
     // until every risky step has succeeded. If any of these throws (malformed
     // elevator, a car referencing a dead shaft, ...), loadGame returns false
-    // and the fallback initNewGame(true) starts from a genuinely clean slate
+    // and the fallback initNewGame() starts from a genuinely clean slate
     // instead of half-written debris: orphan grid cells sitting below a
     // highestFloor of 0 are invisible to the renderer but still counted by
     // getFloorCount() and still block buildFloor support checks.

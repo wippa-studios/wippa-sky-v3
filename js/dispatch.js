@@ -191,7 +191,7 @@ function tickMovingCar(car, elev, state, dt) {
       arriveAtFloor(car, elev, state, target);
     } else {
       car.stops.delete(target);
-      markCallsServed(state, elev.id, target);
+      markCallsServed(state, elev.id, target, car.dir);
     }
     return;
   }
@@ -224,7 +224,7 @@ function arriveAtFloor(car, elev, state, floor) {
   car.doorOpen = 0;
   car.doorTimer = 0;
   car._alighted = false;
-  markCallsServed(state, elev.id, floor);
+  markCallsServed(state, elev.id, floor, car.dir === 'idle' ? null : car.dir);
 }
 
 function tickDoorsCar(car, elev, state, dt) {
@@ -362,9 +362,15 @@ export function pendingCalls(state, shaftId) {
   return calls;
 }
 
-function markCallsServed(state, shaftId, floor) {
+export function markCallsServed(state, shaftId, floor, dir) {
   for (const [, call] of state._callButtons) {
-    if (call.shaftId === shaftId && call.floor === floor && !call.served) call.served = true;
+    if (call.shaftId === shaftId && call.floor === floor && !call.served) {
+      // A car only serves the direction it is travelling in — wiping the
+      // opposite-direction call too would silently strand those sims until
+      // they re-press (8s later) and would inflate wait times.
+      if (dir && call.dir !== dir) continue;
+      call.served = true;
+    }
   }
 }
 

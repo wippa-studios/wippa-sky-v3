@@ -398,7 +398,7 @@ function tickWaiting(sim, state, dt) {
   }
 
   const waitedS = state.tick - sim.waitSince;
-  sim.patience = 100 - waitedS * 3;
+  sim.patience = 100 - waitedS * 2;
 
   // periodically re-press the call if the car hasn't come
   if (waitedS > 8) {

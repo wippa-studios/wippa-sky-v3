@@ -290,3 +290,65 @@
 - Keep a single projection source of truth: `createPerspective().project(col, row)` — col FIRST.
   Duplicated/divergent projection code (old grid.js wrapper, old state.js screenToCell) was the
   root cause of elevator/sim/hover misalignment.
+
+### [plan-then-build] — "new game should start with a working tower" + "elevator waits still too long after buying cars"
+## ✅ Done
+- [2026-09-18] Diagnosed both complaints via static + numeric analysis (no screenshot needed):
+  - **New Game gave a bare ground slab**: `initNewGame(false)` — the full 4-floor starter
+    (offices/shops/residences + populated sims) — was DEAD CODE. Every call site (boot fallback
+    and the New Game button) passed `true`, i.e. the minimal empty slab.
+  - **Waits stayed huge even after buying cars**: `planItinerary` was not load-aware — its only
+    bias was `|shaft.col - fromCol| * 0.6`, so every sim spawning near the same column picked the
+    same shaft; extra cars in other shafts were never used and one 8-capacity car became the
+    bottleneck (35–60s waits → complaint spam at the old 33s threshold).
+  - **Secondary: `markCallsServed` wiped BOTH up/down calls at a floor** — a passing car silently
+    cancelled the opposite direction's call, stranding those sims until they re-pressed (8s).
+  - **Tertiary: express shafts planned routes to non-stop floors but dispatch refuses to board
+    there** → infinite wait/re-complain loop.
+- [2026-09-18] `js/pathfind.js`: added `shaftLoadPenalty(state, shaft)` =
+  `(waiters*0.6 + calls*1.5) / cars` (50 if no car) and applied it to seed + transfer relax;
+  `planItinerary` now spreads sims across the network and sims *prefer shafts with more cars*;
+  express shafts no longer receive routes to non-stop floors (both seed origin + ride targets).
+- [2026-09-18] `js/dispatch.js`: `markCallsServed(state, shaftId, floor, dir)` — direction-aware;
+  a car only clears the call in the direction it is traveling (null = idle = clears both).
+  `arriveAtFloor` passes `car.dir === 'idle' ? null : car.dir`; `tickMovingCar` no-business
+  branch passes `car.dir`.
+- [2026-09-18] `js/sims.js`: patience decay `100 - waitedS*3` → `100 - waitedS*2` (complaint at
+  ~50 game-sec instead of ~33).
+- [2026-09-18] `js/main.js`: `initNewGame()` is now no-arg and the FULL 4-floor starter (3 elevator
+  cols, lobby/office/shop/restaurant/residence/park/cinema/spa, sims via `spawnSimsForCell`) is
+  unconditional; removed the `minimal` branch; boot fallback + New Game button both call it;
+  `save.js` comment updated to match. Starter money 500k → ~202k after build-out (all 4 floors
+  built, 43 sims, happy 78%).
+- [2026-09-18] **61/61 PASS** (`node --test test/*.test.js`; 53 before + 8 new
+  `test/elevator-balance.test.js`): loaded shaft avoided even when nearest; 2-car shaft wins equal
+  load while unloaded keeps classic nearest-shaft; dir-aware call clearing (up served keeps down
+  alive, null clears both); express never routes to a non-stop floor but express-stop dest gets 1
+  leg; mixed express+standard uses the standard shaft for a non-stop dest; starter tower shape
+  (grid.size 4, 3 elevators, 3 cars, tenants > 0, money < 500k, ground floor visible).
+- [2026-09-18] Live headless verification (fresh browser, static server, speed 3):
+  - t+9s (27 game-sec): booted with 43 sims / 4 floors / 3 shafts / $202k; all 3 cars moving to
+    DIFFERENT floors with passengers; sims waiting on shafts 0 AND 2 (load spread — the fix);
+    p95 wait **6.6s**; 9 rides boarded; zero runtime exceptions (only benign favicon 404).
+  - t+30s (90 game-sec, morning rush): 51 sims, 37 rides, 33 alights — trips complete and cycle;
+    p95 wait 37s at the rush peak (below the 50s complaint threshold; old code complained at 33s).
+    Cars kept cycling: an empty car at the top had already reversed and was answering the up-calls.
+
+## ⏭️ Next
+- User chose NOT to push this round — changes remain uncommitted locally (git status:
+  js/{pathfind,dispatch,sims,main,save}.js modified, test/elevator-balance.test.js new).
+- Optional: give the starter 2 cars on the middle shaft to shave the rush-hour tail further
+  (kept at 1 deliberately so the player's first elevator purchase is meaningful).
+- Express-shaft build tool; sky-lobby transfer tooltips (unchanged backlog).
+
+## 🧠 Decisions & Gotchas
+- Load-awareness lives in the *routing* (planItinerary), not in dispatch: dispatch must answer
+  calls greedily, routing decides where sims go. This makes bought cars matter — the penalty
+  divides by cars per shaft, so "add car" now visibly shortens that shaft's queues.
+- Gotcha (test-only): a helper that REPLACES `_waitingPassengers` wipes earlier shafts' waiters —
+  `loadShaft` must append (caught live: the 2-car test failed with 5.4 vs 3.6 because shaft 0's
+  waiters had been overwritten).
+- Gotcha: `updateHighestFloor` lives in state.js, not grid.js (grid.js only imports it) — fix the
+  import in any test that constructs towers.
+- Gotcha: existing pathfind/dispatch tests build shafts WITHOUT `elevatorCars` → penalty 50 for
+  every shaft; assertions are route-shape (relative), so they still pass — verified live.

@@ -70,7 +70,7 @@ export function init() {
   };
 
   const loaded = loadGame(state);
-  if (!loaded) initNewGame(true);
+  if (!loaded) initNewGame();
 
   initSky(state, state.canvasW, state.canvasH);
   initGround(state, state.canvasW);
@@ -108,7 +108,7 @@ export function init() {
 
 // ── starter tower ─────────────────────────────────────────────
 
-function initNewGame(minimal) {
+function initNewGame() {
   // "New game" must mean a genuinely empty lot. state.grid is the one big
   // collection that used to survive this reset: a load that failed AFTER
   // deserializeGrid had written cells left orphan floors behind — invisible to
@@ -157,34 +157,26 @@ function initNewGame(minimal) {
   state.mods = { mood: 0, expenseMult: 1, visitorMult: 1, parkDemand: 1, indoorDemand: 1 };
   state.overlay = 'none';
 
-  if (minimal) {
-    // Minimal start: just a ground floor with elevators and lobby
-    const groundTypes = ['elevator', 'lobby', 'lobby', 'lobby', 'elevator', 'lobby', 'lobby', 'lobby', 'elevator'];
-    for (let c = 0; c < groundTypes.length; c++) {
-      buildFloor(state, 0, c, groundTypes[c]);
-    }
-    // Don't build additional floors
-    state.highestFloor = 0;
-  } else {
-    const rows = {
-      0: ['elevator', 'lobby', 'lobby', 'lobby', 'elevator', 'lobby', 'lobby', 'lobby', 'elevator'],
-      1: ['elevator', 'office', 'shop', 'restaurant', 'elevator', 'office', 'shop', 'residence', 'elevator'],
-      2: ['elevator', 'office', 'residence', 'residence', 'elevator', 'residence', 'office', 'office', 'elevator'],
-      3: ['elevator', 'residence', 'office', 'office', 'elevator', 'park', 'cinema', 'spa', 'elevator'],
-    };
-    for (const key of Object.keys(rows)) {
-      const row = Number(key);
-      const types = rows[key];
-      for (let c = 0; c < types.length; c++) buildFloor(state, row, c, types[c]);
-    }
-    for (const key of Object.keys(rows)) {
-      const row = Number(key);
-      const types = rows[key];
-      for (let c = 0; c < types.length; c++) {
-        const type = types[c];
-        if (type === 'elevator' || type === 'lobby') continue;
-        spawnSimsForCell(state, row, c, type);
-      }
+  // Full starter: 4 floors of offices, shops, residences and leisure, pre-
+  // populated with sims, so a new game opens on a living, buildable tower.
+  const rows = {
+    0: ['elevator', 'lobby', 'lobby', 'lobby', 'elevator', 'lobby', 'lobby', 'lobby', 'elevator'],
+    1: ['elevator', 'office', 'shop', 'restaurant', 'elevator', 'office', 'shop', 'residence', 'elevator'],
+    2: ['elevator', 'office', 'residence', 'residence', 'elevator', 'residence', 'office', 'office', 'elevator'],
+    3: ['elevator', 'residence', 'office', 'office', 'elevator', 'park', 'cinema', 'spa', 'elevator'],
+  };
+  for (const key of Object.keys(rows)) {
+    const row = Number(key);
+    const types = rows[key];
+    for (let c = 0; c < types.length; c++) buildFloor(state, row, c, types[c]);
+  }
+  for (const key of Object.keys(rows)) {
+    const row = Number(key);
+    const types = rows[key];
+    for (let c = 0; c < types.length; c++) {
+      const type = types[c];
+      if (type === 'elevator' || type === 'lobby') continue;
+      spawnSimsForCell(state, row, c, type);
     }
   }
 
@@ -262,7 +254,7 @@ function setupSettingsMenu() {
       state._simHooks = { onAlight: (sim, floor, car) => simAlightedOnFloor(state, sim, floor, car) };
       state._uiHooks = { complaint: (sim, r, f) => addLog(state, `⚠️ ${r} (${floorLabel(f)})`, 'warning'), event: (t, ty) => addLog(state, t, ty || 'info') };
       initCamera(state);
-      initNewGame(true);
+      initNewGame();
       initSky(state, state.canvasW, state.canvasH);
       initGround(state, state.canvasW);
       initDispatch(state);

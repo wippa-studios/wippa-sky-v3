@@ -2,7 +2,28 @@
 //  PATHFINDING — Wippa Sky v2
 // ═══════════════════════════════════════════
 
+import { isExpressStopFloor } from './dispatch.js';
+
 const TRANSFER_PENALTY = 10;
+
+// Per-shaft real-time load penalty, so sims spread across the network
+// instead of everyone queueing for the first/nearest shaft. Each waiting
+// passenger adds 0.6, each pending call 1.5, divided by the number of cars
+// in the shaft — buying extra cars now actually reduces the wait sims
+// experience on that shaft. A shaft with no cars is effectively unusable.
+export function shaftLoadPenalty(state, shaft) {
+  let waiters = 0;
+  for (const w of (state._waitingPassengers || [])) {
+    if (w.waiting && w.shaftId === shaft.id) waiters++;
+  }
+  let calls = 0;
+  for (const [, c] of (state._callButtons || new Map())) {
+    if (!c.served && c.shaftId === shaft.id) calls++;
+  }
+  const cars = (state.elevatorCars || []).filter(c => c.elevatorId === shaft.id).length;
+  if (cars <= 0) return 50;
+  return (waiters * 0.6 + calls * 1.5) / cars;
+}
 
 // ─── Build floor adjacency graph ─────────────────────
 
@@ -152,12 +173,13 @@ export function planItinerary(state, fromFloor, toFloor, opts = {}) {
     }
   };
 
-  // Seed with a small distance-to-shaft bias so the three lobby shafts share
-  // the load instead of every sim queueing for the lowest-id shaft.
+  // Seed with a small distance-to-shaft bias plus the shaft's real-time load
+  // (waiting passengers / pending calls / cars per shaft) so the network
+  // shares the load instead of every sim queueing for the nearest shaft.
   for (const s of shafts) {
-    if (s.floors.includes(fromFloor)) {
-      relax(fromFloor, s.id, Math.abs(s.col - fromCol) * 0.6, null);
-    }
+    if (!s.floors.includes(fromFloor)) continue;
+    if (s.kind === 'express' && !isExpressStopFloor(s, fromFloor)) continue;
+    relax(fromFloor, s.id, Math.abs(s.col - fromCol) * 0.6 + shaftLoadPenalty(state, s), null);
   }
   if (pq.length === 0) return null;
 
@@ -171,15 +193,16 @@ export function planItinerary(state, fromFloor, toFloor, opts = {}) {
     const s = shafts.find(x => x.id === cur.shaftId);
     if (!s) continue;
 
-    // ride within this shaft
+    // ride within this shaft (express cars only serve express-stop floors)
     for (const f of s.floors) {
       if (f === cur.floor) continue;
+      if (s.kind === 'express' && !isExpressStopFloor(s, f)) continue;
       relax(f, s.id, cur.cost + Math.abs(f - cur.floor), { floor: cur.floor, shaftId: cur.shaftId });
     }
-    // transfer to another shaft that also serves this floor
+    // transfer to another shaft that also serves this floor (load-aware)
     for (const o of shafts) {
       if (o.id === s.id || !o.floors.includes(cur.floor)) continue;
-      relax(cur.floor, o.id, cur.cost + transferPenalty, { floor: cur.floor, shaftId: cur.shaftId });
+      relax(cur.floor, o.id, cur.cost + transferPenalty + shaftLoadPenalty(state, o), { floor: cur.floor, shaftId: cur.shaftId });
     }
   }
 
